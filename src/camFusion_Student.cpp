@@ -156,8 +156,74 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     // ...
 }
 
+std::vector<int> findAllBBsThatContainPoint(const cv::KeyPoint& keypoint, const std::vector<BoundingBox>& boundingBoxes)
+{
+    std::vector<int> containingBBIdx;
+    for(auto i = 0; i < boundingBoxes.size(); ++i)
+    {
+        if(boundingBoxes[i].roi.contains(keypoint.pt))
+        {
+            containingBBIdx.push_back(i);
+        }
+    }
+
+    return containingBBIdx;
+}
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
-    // ...
+    const std::size_t prevBBsSize = prevFrame.boundingBoxes.size();
+    const std::size_t currBBsSize = currFrame.boundingBoxes.size();
+
+    // Init score matrix
+    std::vector<std::vector<int>> bbPairsScores(prevBBsSize, std::vector<int>(currBBsSize, 0));
+
+    for(const auto& match : matches)
+    {
+        int prevIdx = match.queryIdx;
+        int currentIdx = match.trainIdx;
+
+        // Get keypoint from previous frame that is matched
+        const auto& prevKeypoint = prevFrame.keypoints[prevIdx];
+        // Get keypoint from current frame that is matched
+        const auto& currKeypoint = currFrame.keypoints[currentIdx];
+
+        // Find BBs from prev frame that contain keypoint
+        const auto previousEnclosingBBs = findAllBBsThatContainPoint(prevKeypoint, prevFrame.boundingBoxes);
+        // Find BBs from current frame that contain keypoint
+        const auto currentEnclosingBBs = findAllBBsThatContainPoint(currKeypoint, currFrame.boundingBoxes);
+
+        for(const auto& prevBB : previousEnclosingBBs)
+        {
+            for(const auto& currBB : currentEnclosingBBs)
+            {
+                ++bbPairsScores[prevBB][currBB];
+            }
+        }
+    }
+
+    // At this point, I have scores for each prev/curr BB pair
+
+    // For each previous bb find best scored current
+    for(auto prevIdx = 0; prevIdx < prevBBsSize; prevIdx++)
+    {
+        // All corresponding current scores
+        const auto& scores = bbPairsScores[prevIdx];
+
+        int bestScoreIdx = 0;
+        int maxScore = -1;
+        for(auto i = 0; i < scores.size(); i++)
+        {
+            if (scores[i] > maxScore)
+            {
+                maxScore = scores[i];
+                bestScoreIdx = i;
+            }
+        }
+
+        if(maxScore > 0)
+        {
+            bbBestMatches[prevIdx] = bestScoreIdx;
+        }
+    }
 }
