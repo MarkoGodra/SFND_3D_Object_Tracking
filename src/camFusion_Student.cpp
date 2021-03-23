@@ -136,9 +136,41 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 
 
 // associate a given bounding box with the keypoints it contains
-void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
+void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev,
+                              std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    // ...
+    std::vector<double> euclideanDistances;
+
+    // Find euclidean distances between prev/curr for all keypoints in current bounding box
+    for (const auto &match : kptMatches)
+    {
+        int currIdx = match.trainIdx;
+        int prevIdx = match.queryIdx;
+        if (boundingBox.roi.contains(kptsCurr[currIdx].pt))
+        {
+            euclideanDistances.push_back(cv::norm(kptsCurr[currIdx].pt - kptsPrev[prevIdx].pt));
+        }
+    }
+
+    double meanOffset = std::accumulate(euclideanDistances.begin(), euclideanDistances.end(), 0.0,
+                                        [](const double &sum, const double &d)
+                                        {
+                                            return sum + d;
+                                        }) / euclideanDistances.size();
+
+    for (const auto &match : kptMatches)
+    {
+        int currIdx = match.trainIdx;
+        int prevIdx = match.queryIdx;
+
+        // If current bounding box contains point and offset of keypoints is less than mean (not faulty detection)
+        if (boundingBox.roi.contains(kptsCurr[currIdx].pt) &&
+            (cv::norm(kptsCurr[currIdx].pt - kptsPrev[prevIdx].pt) <= meanOffset))
+        {
+            boundingBox.keypoints.push_back(kptsCurr[currIdx]);
+            boundingBox.kptMatches.push_back(match);
+        }
+    }
 }
 
 
