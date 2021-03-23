@@ -111,7 +111,7 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
         sprintf(str1, "id=%d, #pts=%d", it1->boxID, (int)it1->lidarPoints.size());
         putText(topviewImg, str1, cv::Point2f(left-250, bottom+50), cv::FONT_ITALIC, 2, currColor);
         sprintf(str2, "xmin=%2.2f m, yw=%2.2f m", xwmin, ywmax-ywmin);
-        putText(topviewImg, str2, cv::Point2f(left-250, bottom+125), cv::FONT_ITALIC, 2, currColor);  
+        putText(topviewImg, str2, cv::Point2f(left-250, bottom+125), cv::FONT_ITALIC, 2, currColor);
     }
 
     // plot distance markers
@@ -149,11 +149,60 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
     // ...
 }
 
+double calculateNearestKMean(std::vector<double>& points, int k)
+{
+    sort(points.begin(), points.end());
+    std::size_t size = points.size();
+    std::size_t actualSize = size >= k ? k : size;
+    double mean;
+
+    if(actualSize % 2 == 0)
+    {
+        mean = points[actualSize / 2] + points[(actualSize / 2) - 1] / 2;
+    }
+    else
+    {
+        mean = points[actualSize / 2];
+    }
+
+    return mean;
+}
 
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    // ...
+    // auxiliary variables
+    double dT = 0.1;        // time between two measurements in seconds
+    double laneWidth = 4.0; // assumed width of the ego lane
+    double scope = (laneWidth-0.2) / 2;
+    std::vector<double> prevPointsInRoi;
+    std::vector<double> currPointsInRoi;
+
+    for(const auto& point : lidarPointsPrev)
+    {
+        // Only consider point if in respective lane
+        if(fabs(point.y) < laneWidth)
+        {
+            prevPointsInRoi.push_back(point.x);
+        }
+    }
+
+    for(const auto& point : lidarPointsCurr)
+    {
+        // Only consider point if in respective lane
+        if(fabs(point.y) < laneWidth)
+        {
+            currPointsInRoi.push_back(point.x);
+        }
+    }
+
+    // At this point we have x coordinates of all points for ego lane
+    // Now we need to find mean of k nearest elems
+    int k = 50;
+    double meanCurr = calculateNearestKMean(currPointsInRoi, k);
+    double meanPrev = calculateNearestKMean(prevPointsInRoi, k);
+
+    TTC = meanCurr * dT / (meanPrev - meanCurr);
 }
 
 std::vector<int> findAllBBsThatContainPoint(const cv::KeyPoint& keypoint, const std::vector<BoundingBox>& boundingBoxes)
