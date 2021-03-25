@@ -58,3 +58,53 @@ TTC is estimated as:
 
 So small difference between closest previous and closest current point will cause greater TTC estimates.
 For detection of closest point median point is used. This significantly suppresses outliers.
+
+### FP.6 Performance Evaluation 2
+Run several detector / descriptor combinations and look at the differences in TTC estimation. Find out which methods perform best and also include several examples where camera-based TTC estimation is way off. As with Lidar, describe your observations again and also look into potential reasons.
+
+All combinations of detectors/descriptors have been run same as in previous project.
+However, in order to find out which combination worked best for TTC estimation, differnt metric is now used.
+Instead of looking at how fast detection is, this time focus was on how close camera TTC was to lidar TTC estimation.
+
+Lidar is active sensor in contrast to camera which is passive sensor and with LIDAR we can have some
+sense about depth, which is not the case with camera. Even though Lidar TTC estimations are not perfect,
+they are more reliable than camera TTC estimates. In order to estimate which detector/descriptor
+performs the best when precise TTC estimation is the main goal, we are looking at average TTC error
+between LIDAR TTC estimate and Camera TTC estimate over course of 18 time frames.
+
+Here are average errors for each detector/descriptor combination:
+
+<img src="images/graph.png"/>
+
+From this graph, it is obvios that top 3 candidates are:
+
+| Det/Desc | Average TTC error (s)|
+| -------- | ------------------|
+| SHITOMASI + ORB | 2.0562 |
+| SHITOMASI + SIFT | 2.10864 |
+| SHITOMASI + BRIEF | 2.37497 |
+
+There were also situations where camera TTC estimations were obviously erroneous,
+and such scenarios occurred multiple times.
+
+1) BRISK + FREAK
+   * Frame IDX 12
+   * Camera TTC estimate = inf
+   * Previous camera estimate = 8.4s
+  
+2) BRISK + FREAK
+    * Frame IDX 10
+    * Camera TTC estimate = -545.044s
+    * Previous camera estimate = 13.32s
+
+3) HARRIS + SIFT
+    * Frame IDX 12
+    * Camera TTC estimate = -inf
+    * Previous camera estimate = 11.15s
+  
+Reason for this is there are matched points on the background that don't belong to the car. Since we 
+assume that each matched point is located on the vehicle, this mostly causes erroneous TTC estimates.
+Lidar has much more stable (but not perfect) TTC estimates and this is why it is used as reference in
+camera TTC precision evaluation.
+
+Complete data can be found in `reports/stats.xlsx` file.
