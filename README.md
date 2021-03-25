@@ -36,6 +36,38 @@ In this final project, you will implement the missing parts in the schematic. To
 
 ## Rubic points
 
+### FP.1 Match 3D Objects
+
+Matching of bounding boxes is implemented within a function 
+`void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)`.
+It takes as a input current and previous data frame and provides output `std::map<int, int> &bbBestMatches`
+map of matched boxes ids. Matches are boxes with highest number of keypoint correspondences.
+
+### FP.2 Compute Lidar-based TTC
+
+Lidar based TTC estimation is done in `void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
+std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)`. This function receives previous and current
+lidar points and returns TTC as output. In order to reduce effect of outlier points,
+which are not located on actual preceding car, median point from nearest 50 points is taken. This way
+TTC estimation is more statistically robust. TTC estimation is done in following way
+`TTC = meanCurr * dT / (meanPrev - meanCurr);`
+
+### FP.3 Associate Keypoint Correspondences with Bounding Boxes
+
+Association of keypoints to corresponding bounding boxes is done in `void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev,
+std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)` function. As a input it takes bounding boxes, but also
+previous and current keypoints alongside with matches. Euclidean distance for each matched keypoint (current, previous) is
+calculated. All matched keypoints where distance between previous and current data frames exceeds mean of all euclidean distances
+are discarded. This way fair amount of erroneous keypoint is discarded.
+
+### FP.4 Compute Camera-based TTC
+
+Camera based TTC estimation is done in `void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr,
+std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)`. This function receives matched keypoints from previous and current data frame and
+provides TTC estimation. Distance ratio is calculated for each matched keypoint and median value for distance ratio is considered
+when calculating TTC based on formula:
+`TTC = -dT / (1 - medianDistRatio);`
+
 ### FP.5 Performance Evaluation 1
 Find examples where the TTC estimate of the Lidar sensor does not seem plausible. Describe your observations and provide a sound argumentation why you think this happened.
 
