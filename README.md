@@ -33,3 +33,28 @@ In this final project, you will implement the missing parts in the schematic. To
 2. Make a build directory in the top level project directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
 4. Run it: `./3D_object_tracking`.
+
+## Rubic points
+
+### FP.5 Performance Evaluation 1
+Find examples where the TTC estimate of the Lidar sensor does not seem plausible. Describe your observations and provide a sound argumentation why you think this happened.
+
+In two situations lidar TTC estimate was obviously incorrect. This was easily visible since
+TTC estimate had big changes between two subsequent time frames.
+
+1) TTC estimate jumps from ~11s to ~19s and than back to ~13s.
+Point cloud situation:
+
+<img src="images/lidar_ttc_wrong_1.png"/>
+
+2) TTC estimate jumps from ~15s to ~20s and than back to ~12s again
+Point cloud situation:
+   
+ <img src="images/lidar_ttc_wrong_2.png"/>
+   
+Both of these occur since there are some outliers in both time frames. In addition to this,
+TTC is estimated as:
+`TTC = meanCurr * dT / (meanPrev - meanCurr);`
+
+So small difference between closest previous and closest current point will cause greater TTC estimates.
+For detection of closest point median point is used. This significantly suppresses outliers.
